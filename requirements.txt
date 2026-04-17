@@ -8,13 +8,17 @@ pydantic>=2.5.1
 python-dotenv>=1.0.0
 
 # LangChain v1
-langchain>=1.0.0,<1.2
-langchain-classic>=1.0.0,<1.1
-langchain-community>=0.4.0,<0.5
-langchain-core>=1.0.0,<1.1
-langchain-ollama>=1.0.0,<1.1
-langchain-openai>=1.0.0,<1.1
-langchain-text-splitters>=1.0.0,<1.1
+# LangChain 0.3.x line. langchain-classic 1.0.0 is the only version that
+# doesn't import from langchain_core.cross_encoders (which was removed in
+# core 1.x and never existed in 0.3.x). It's installed separately in the
+# Dockerfile with --no-deps because its metadata claims core>=1.0.0,
+# which conflicts with the rest of the 0.3.x ecosystem.
+langchain==0.3.28
+langchain-community>=0.3.0,<0.4
+langchain-core>=0.3.80,<0.4
+langchain-openai>=0.3.0,<0.4
+langchain-ollama>=0.3.0,<0.4
+langchain-text-splitters>=0.3.0,<0.4
 langgraph>=0.2.76
 
 # LLM Providers

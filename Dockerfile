@@ -32,7 +32,8 @@ COPY ./multi_agents/requirements.txt ./multi_agents/requirements.txt
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt --upgrade --prefer-binary && \
-    pip install --no-cache-dir -r multi_agents/requirements.txt --upgrade --prefer-binary
+    pip install --no-cache-dir -r multi_agents/requirements.txt --upgrade --prefer-binary && \
+    pip install --no-cache-dir --no-deps 'langchain-classic==1.0.0'
 
 # Stage 3: Final stage with non-root user and app
 FROM gpt-researcher-install AS gpt-researcher

@@ -19,9 +19,12 @@ export const getHost = ({ purpose }: GetHostParams = {}): string => {
     } else if (process.env.REACT_APP_GPTR_API_URL) {
       return process.env.REACT_APP_GPTR_API_URL;
     } else if (purpose === 'langgraph-gui') {
-      return host.includes('localhost') ? 'http%3A%2F%2F127.0.0.1%3A8123' : `https://${host}`;
+      return host.includes('localhost') ? 'http%3A%2F%2F127.0.0.1%3A8123' : `${window.location.protocol}//${host}`;
     } else {
-      return host.includes('localhost') ? 'http://localhost:8000' : `https://${host}`;
+      // Use same-origin protocol so HTTP deployments don't try wss:// and fail
+      // with ERR_CERT_AUTHORITY_INVALID. Override via ?GPTR_API_URL= or the
+      // NEXT_PUBLIC_GPTR_API_URL build-time var when backend is on a different host.
+      return host.includes('localhost') ? 'http://localhost:8000' : `${window.location.protocol}//${host}`;
     }
   }
   return '';

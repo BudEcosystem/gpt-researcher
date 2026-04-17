@@ -10,7 +10,7 @@ USER root
 RUN pip install --no-cache-dir \
       'langchain-huggingface>=0.1,<0.2' \
       'sentence-transformers>=3,<5' \
-      'duckduckgo-search>=6,<8' \
+      'ddgs' \
       'langchain-cohere' \
       'langchain-google-genai' \
       'langchain-ollama'
