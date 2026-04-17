@@ -1,0 +1,18 @@
+# budstudio/gpt-researcher-backend:*-full
+# Extends the base image with optional LLM/embedding/retriever providers.
+# ARG BASE_IMAGE lets CI pass the exact base tag built in the same run.
+ARG BASE_IMAGE=budstudio/gpt-researcher-backend:latest
+FROM ${BASE_IMAGE}
+
+USER root
+
+# Pinned to versions compatible with the base image's langchain 0.3.x / langchain-core <1.0.
+RUN pip install --no-cache-dir \
+      'langchain-huggingface>=0.1,<0.2' \
+      'sentence-transformers>=3,<5' \
+      'duckduckgo-search>=6,<8' \
+      'langchain-cohere' \
+      'langchain-google-genai' \
+      'langchain-ollama'
+
+USER gpt-researcher

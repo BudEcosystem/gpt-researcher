@@ -1,0 +1,13 @@
+fullstack:
+  enabled: true
+backend:
+  persistence:
+    myDocs: { enabled: true, size: 1Gi }
+    outputs: { enabled: true, size: 1Gi }
+    logs: { enabled: false }
+ingress:
+  enabled: true
+  className: nginx
+  host: gptr.example.com
+secrets:
+  existingSecret: "pre-provisioned-gptr-secrets"

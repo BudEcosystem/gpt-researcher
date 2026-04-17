@@ -1,0 +1,56 @@
+{{- if .Values.discordBot.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gpt-researcher.fullname" . }}-discord
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.componentLabels" (dict "ctx" . "component" "discord") | nindent 4 }}
+spec:
+  replicas: {{ .Values.discordBot.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "discord") | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.discordBot.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "discord") | nindent 8 }}
+    spec:
+      {{- include "gpt-researcher.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gpt-researcher.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: discord
+          image: {{ include "gpt-researcher.image" (dict "image" .Values.discordBot.image "ctx" .) }}
+          imagePullPolicy: {{ .Values.discordBot.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          envFrom:
+            {{- include "gpt-researcher.envFrom" . | nindent 12 }}
+          {{- with .Values.discordBot.env }}
+          env:
+            {{- range $k, $v := . }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.discordBot.resources | nindent 12 }}
+      {{- with .Values.discordBot.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.discordBot.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.discordBot.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

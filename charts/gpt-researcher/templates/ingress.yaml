@@ -1,0 +1,45 @@
+{{- if .Values.ingress.enabled }}
+{{- $fullName := include "gpt-researcher.fullname" . -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- range .Values.ingress.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                {{- if $.Values.fullstack.enabled }}
+                name: {{ $fullName }}-fullstack
+                port:
+                  number: {{ $.Values.fullstack.service.port }}
+                {{- else if eq .service "backend" }}
+                name: {{ $fullName }}-backend
+                port:
+                  number: {{ $.Values.backend.service.port }}
+                {{- else }}
+                name: {{ $fullName }}-frontend
+                port:
+                  number: {{ $.Values.frontend.service.port }}
+                {{- end }}
+          {{- end }}
+{{- end }}

@@ -1,0 +1,269 @@
+## Default values for gpt-researcher.
+## See charts/gpt-researcher/README.md for a full reference.
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+
+## When fullstack.enabled is true, a single Deployment runs the combined
+## backend+frontend image (Dockerfile.fullstack) behind one Service, and the
+## backend/frontend sections below are ignored except for env/secrets/config
+## and persistence (which is attached to the fullstack pod).
+fullstack:
+  enabled: false
+  image:
+    repository: budstudio/gpt-researcher-fullstack
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3000
+    backendPort: 8000
+  resources: {}
+  podAnnotations: {}
+
+backend:
+  enabled: true
+  image:
+    ## Default is the "-full" variant which includes langchain-huggingface,
+    ## sentence-transformers, duckduckgo-search, cohere, google-genai, ollama.
+    ## For a minimal image (OpenAI-only, ~1 GB smaller), switch to:
+    ##   repository: budstudio/gpt-researcher-backend
+    ##   tag: ""   # uses Chart.appVersion
+    repository: budstudio/gpt-researcher-backend
+    tag: ""
+    ## Image suffix appended to tag (e.g. "-full" yields appVersion-full).
+    ## Empty string = use the tag as-is.
+    tagSuffix: "-full"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  ## Optional command/args override. Empty uses the image's CMD
+  ## (uvicorn main:app --host 0.0.0.0 --port 8000).
+  command: []
+  args: []
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits: {}
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: null
+  podAnnotations: {}
+  podLabels: {}
+  env: {}
+  ## Probes. The app has no /health endpoint today — default liveness uses
+  ## TCP, readiness uses HTTP GET / which returns 200.
+  probes:
+    liveness:
+      enabled: true
+      tcpSocket:
+        port: 8000
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      enabled: true
+      httpGet:
+        path: /
+        port: 8000
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+  persistence:
+    myDocs:
+      enabled: true
+      mountPath: /usr/src/app/my-docs
+      size: 5Gi
+      accessModes:
+        - ReadWriteOnce
+      storageClass: ""
+      existingClaim: ""
+    outputs:
+      enabled: true
+      mountPath: /usr/src/app/outputs
+      size: 10Gi
+      ## Set RWX if mounting into frontend as well, or if replicaCount > 1.
+      accessModes:
+        - ReadWriteOnce
+      storageClass: ""
+      existingClaim: ""
+    logs:
+      enabled: true
+      mountPath: /usr/src/app/logs
+      size: 2Gi
+      accessModes:
+        - ReadWriteOnce
+      storageClass: ""
+      existingClaim: ""
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+frontend:
+  enabled: true
+  image:
+    repository: budstudio/gpt-researcher-frontend
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits: {}
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 75
+  podAnnotations: {}
+  podLabels: {}
+  ## NEXT_PUBLIC_GPTR_API_URL is baked into the client bundle at runtime —
+  ## the browser must be able to resolve it, so set it to the externally
+  ## reachable backend URL (e.g. https://gptr.example.com/api).
+  env:
+    NEXT_PUBLIC_GPTR_API_URL: ""
+    NEXT_PUBLIC_GA_MEASUREMENT_ID: ""
+  ## Mount the backend's outputs PVC into the frontend (read-only) to serve
+  ## generated reports directly. Requires backend.persistence.outputs.accessModes
+  ## to include ReadWriteMany when frontend.replicaCount > 1 or runs on a
+  ## different node than the backend.
+  mountOutputs: false
+  probes:
+    liveness:
+      enabled: true
+      tcpSocket:
+        port: 3000
+      initialDelaySeconds: 30
+      periodSeconds: 20
+    readiness:
+      enabled: true
+      httpGet:
+        path: /
+        port: 3000
+      initialDelaySeconds: 10
+      periodSeconds: 10
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+discordBot:
+  enabled: false
+  image:
+    repository: budstudio/gpt-researcher-discord
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources: {}
+  podAnnotations: {}
+  env: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## Secret strategy (precedence: externalSecrets > existingSecret > create).
+secrets:
+  create: true
+  existingSecret: ""
+  externalSecrets:
+    enabled: false
+    refreshInterval: 1h
+    secretStoreRef:
+      name: ""
+      kind: ClusterSecretStore
+    ## Each entry becomes an ExternalSecret data mapping:
+    ##   secretKey: OPENAI_API_KEY
+    ##   remoteRef: { key: secret/data/gptr, property: OPENAI_API_KEY }
+    data: []
+  ## Used only when secrets.create is true. Values are plain text and
+  ## base64-encoded by Helm. Do NOT use in production — prefer existingSecret
+  ## or externalSecrets.
+  data:
+    OPENAI_API_KEY: ""
+    OPENAI_BASE_URL: ""
+    TAVILY_API_KEY: ""
+    LANGCHAIN_API_KEY: ""
+    GOOGLE_API_KEY: ""
+    GOOGLE_CX_KEY: ""
+    DISCORD_BOT_TOKEN: ""
+    DISCORD_CLIENT_ID: ""
+
+## Non-secret environment — rendered into a ConfigMap and injected via envFrom.
+config:
+  LOGGING_LEVEL: INFO
+  IMAGE_GENERATION_ENABLED: "false"
+  IMAGE_GENERATION_MODEL: gemini-2.0-flash-preview-image-generation
+  IMAGE_GENERATION_MAX_IMAGES: "3"
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: gptr.example.com
+  tls: []
+  ## Path routing mirrors nginx in Dockerfile.fullstack: backend paths first,
+  ## frontend as the catch-all. For websocket support on /ws, add:
+  ##   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  ##   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  paths:
+    - path: /ws
+      pathType: Prefix
+      service: backend
+    - path: /outputs
+      pathType: Prefix
+      service: backend
+    - path: /reports
+      pathType: Prefix
+      service: backend
+    - path: /files
+      pathType: Prefix
+      service: backend
+    - path: /getConfig
+      pathType: Prefix
+      service: backend
+    - path: /setConfig
+      pathType: Prefix
+      service: backend
+    - path: /
+      pathType: Prefix
+      service: frontend
+
+networkPolicy:
+  enabled: false
+  ## Ingress sources allowed to reach the backend/frontend Services.
+  ## Empty list + enabled=true becomes default-deny ingress.
+  ingressFrom: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+commonLabels: {}
+commonAnnotations: {}

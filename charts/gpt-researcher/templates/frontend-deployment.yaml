@@ -1,0 +1,88 @@
+{{- if and .Values.frontend.enabled (not .Values.fullstack.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gpt-researcher.fullname" . }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.componentLabels" (dict "ctx" . "component" "frontend") | nindent 4 }}
+spec:
+  {{- if not .Values.frontend.autoscaling.enabled }}
+  replicas: {{ .Values.frontend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "frontend") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.frontend.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "frontend") | nindent 8 }}
+        {{- with .Values.frontend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "gpt-researcher.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gpt-researcher.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: frontend
+          image: {{ include "gpt-researcher.image" (dict "image" .Values.frontend.image "ctx" .) }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            {{- range $k, $v := .Values.frontend.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            - name: LOGGING_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "gpt-researcher.configMapName" . }}
+                  key: LOGGING_LEVEL
+                  optional: true
+          {{- if .Values.frontend.probes.liveness.enabled }}
+          livenessProbe:
+            {{- omit .Values.frontend.probes.liveness "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.frontend.probes.readiness.enabled }}
+          readinessProbe:
+            {{- omit .Values.frontend.probes.readiness "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          {{- if and .Values.frontend.mountOutputs .Values.backend.persistence.outputs.enabled }}
+          volumeMounts:
+            - name: outputs
+              mountPath: /app/outputs
+              readOnly: true
+          {{- end }}
+      {{- if and .Values.frontend.mountOutputs .Values.backend.persistence.outputs.enabled }}
+      volumes:
+        - name: outputs
+          persistentVolumeClaim:
+            claimName: {{ include "gpt-researcher.pvcName" (dict "ctx" . "key" "outputs" "volume" "outputs") }}
+      {{- end }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

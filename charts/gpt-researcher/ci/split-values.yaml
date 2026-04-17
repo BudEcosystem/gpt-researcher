@@ -1,0 +1,33 @@
+backend:
+  enabled: true
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+  persistence:
+    myDocs: { enabled: true, size: 1Gi }
+    outputs: { enabled: true, size: 1Gi }
+    logs: { enabled: false }
+frontend:
+  enabled: true
+  env:
+    NEXT_PUBLIC_GPTR_API_URL: "https://gptr.example.com/api"
+ingress:
+  enabled: true
+  className: nginx
+  host: gptr.example.com
+  tls:
+    - secretName: gptr-tls
+      hosts:
+        - gptr.example.com
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+secrets:
+  create: true
+  data:
+    OPENAI_API_KEY: "test"
+    TAVILY_API_KEY: "test"

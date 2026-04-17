@@ -1,0 +1,83 @@
+name: Helm CI
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - ".github/workflows/helm-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+
+jobs:
+  lint-and-template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.15.0
+
+      - name: Helm lint (default + every ci fixture)
+        run: |
+          helm lint charts/gpt-researcher
+          for f in charts/gpt-researcher/ci/*.yaml; do
+            echo "== $f =="
+            helm lint charts/gpt-researcher -f "$f"
+          done
+
+      - name: Helm template (default + every ci fixture)
+        run: |
+          helm template gptr charts/gpt-researcher > /dev/null
+          for f in charts/gpt-researcher/ci/*.yaml; do
+            echo "== $f =="
+            helm template gptr charts/gpt-researcher -f "$f" > /dev/null
+          done
+
+      - name: kubeconform
+        run: |
+          curl -sSLo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz
+          for f in charts/gpt-researcher/ci/*.yaml; do
+            helm template gptr charts/gpt-researcher -f "$f" \
+              | ./kubeconform -strict -ignore-missing-schemas -schema-location default
+          done
+
+  chart-testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.15.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: helm/chart-testing-action@v2.6.1
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed=$(ct list-changed --target-branch main || true)
+          if [ -n "$changed" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Run chart-testing (lint)
+        if: steps.list-changed.outputs.changed == 'true'
+        run: ct lint --target-branch main --check-version-increment=false
+
+      - name: Create kind cluster
+        if: steps.list-changed.outputs.changed == 'true'
+        uses: helm/kind-action@v1.10.0
+
+      - name: Run chart-testing (install)
+        if: steps.list-changed.outputs.changed == 'true'
+        run: ct install --target-branch main --helm-extra-set-args "--set=secrets.data.OPENAI_API_KEY=test --set=secrets.data.TAVILY_API_KEY=test"

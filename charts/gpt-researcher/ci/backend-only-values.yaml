@@ -1,0 +1,14 @@
+frontend:
+  enabled: false
+backend:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    myDocs: { enabled: false }
+    outputs: { enabled: false }
+    logs: { enabled: false }
+secrets:
+  create: true
+  data:
+    OPENAI_API_KEY: "test"
+    TAVILY_API_KEY: "test"

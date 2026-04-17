@@ -1,0 +1,23 @@
+fullstack:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2,     memory: 4Gi }
+
+backend:
+  persistence:
+    myDocs:  { enabled: true, size: 10Gi }
+    outputs: { enabled: true, size: 20Gi }
+    logs:    { enabled: true, size: 5Gi }
+
+secrets:
+  create: true
+  data:
+    OPENAI_API_KEY: sk-replace-me
+    TAVILY_API_KEY: tvly-replace-me
+
+ingress:
+  enabled: true
+  className: nginx
+  host: gptr.example.com

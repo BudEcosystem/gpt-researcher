@@ -1,0 +1,56 @@
+secrets:
+  create: false
+  externalSecrets:
+    enabled: true
+    refreshInterval: 15m
+    secretStoreRef:
+      name: vault-backend
+      kind: ClusterSecretStore
+    data:
+      - secretKey: OPENAI_API_KEY
+        remoteRef: { key: secret/data/gptr, property: OPENAI_API_KEY }
+      - secretKey: TAVILY_API_KEY
+        remoteRef: { key: secret/data/gptr, property: TAVILY_API_KEY }
+      - secretKey: LANGCHAIN_API_KEY
+        remoteRef: { key: secret/data/gptr, property: LANGCHAIN_API_KEY }
+
+backend:
+  replicaCount: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2,     memory: 4Gi }
+  persistence:
+    myDocs:  { enabled: true, size: 20Gi, accessModes: [ReadWriteMany], storageClass: efs-sc }
+    outputs: { enabled: true, size: 50Gi, accessModes: [ReadWriteMany], storageClass: efs-sc }
+    logs:    { enabled: true, size: 10Gi, accessModes: [ReadWriteOnce], storageClass: gp3 }
+
+frontend:
+  replicaCount: 2
+  mountOutputs: true
+  env:
+    NEXT_PUBLIC_GPTR_API_URL: https://gptr.example.com/api
+
+ingress:
+  enabled: true
+  className: nginx
+  host: gptr.example.com
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: gptr-tls
+      hosts:
+        - gptr.example.com
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx

@@ -1,0 +1,73 @@
+{{- if .Values.fullstack.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gpt-researcher.fullname" . }}-fullstack
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.componentLabels" (dict "ctx" . "component" "fullstack") | nindent 4 }}
+spec:
+  replicas: {{ .Values.fullstack.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "fullstack") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.fullstack.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "fullstack") | nindent 8 }}
+    spec:
+      {{- include "gpt-researcher.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gpt-researcher.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: fullstack
+          image: {{ include "gpt-researcher.image" (dict "image" .Values.fullstack.image "ctx" .) }}
+          imagePullPolicy: {{ .Values.fullstack.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+            - name: backend
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            {{- include "gpt-researcher.envFrom" . | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.fullstack.resources | nindent 12 }}
+          volumeMounts:
+            {{- range $key, $volume := dict "myDocs" "my-docs" "outputs" "outputs" "logs" "logs" }}
+            {{- $p := index $.Values.backend.persistence $key }}
+            {{- if $p.enabled }}
+            - name: {{ $volume }}
+              mountPath: {{ $p.mountPath }}
+            {{- end }}
+            {{- end }}
+      volumes:
+        {{- range $key, $volume := dict "myDocs" "my-docs" "outputs" "outputs" "logs" "logs" }}
+        {{- $p := index $.Values.backend.persistence $key }}
+        {{- if $p.enabled }}
+        - name: {{ $volume }}
+          persistentVolumeClaim:
+            claimName: {{ include "gpt-researcher.pvcName" (dict "ctx" $ "key" $key "volume" $volume) }}
+        {{- end }}
+        {{- end }}
+{{- end }}

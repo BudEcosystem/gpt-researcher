@@ -1,0 +1,15 @@
+secrets:
+  create: true
+  data:
+    OPENAI_API_KEY: sk-replace-me
+    TAVILY_API_KEY: tvly-replace-me
+
+backend:
+  persistence:
+    myDocs: { enabled: false }
+    outputs: { enabled: false }
+    logs: { enabled: false }
+
+frontend:
+  env:
+    NEXT_PUBLIC_GPTR_API_URL: http://localhost:8000

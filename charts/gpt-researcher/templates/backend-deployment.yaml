@@ -1,0 +1,100 @@
+{{- if and .Values.backend.enabled (not .Values.fullstack.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gpt-researcher.fullname" . }}-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.componentLabels" (dict "ctx" . "component" "backend") | nindent 4 }}
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "backend") | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if and .Values.secrets.create (not .Values.secrets.existingSecret) (not .Values.secrets.externalSecrets.enabled) }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.backend.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "backend") | nindent 8 }}
+        {{- with .Values.backend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "gpt-researcher.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gpt-researcher.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: backend
+          image: {{ include "gpt-researcher.image" (dict "image" .Values.backend.image "ctx" .) }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          {{- with .Values.backend.command }}
+          command: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.args }}
+          args: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            {{- include "gpt-researcher.envFrom" . | nindent 12 }}
+          {{- with .Values.backend.env }}
+          env:
+            {{- range $k, $v := . }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.backend.probes.liveness.enabled }}
+          livenessProbe:
+            {{- omit .Values.backend.probes.liveness "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.backend.probes.readiness.enabled }}
+          readinessProbe:
+            {{- omit .Values.backend.probes.readiness "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          volumeMounts:
+            {{- range $key, $volume := dict "myDocs" "my-docs" "outputs" "outputs" "logs" "logs" }}
+            {{- $p := index $.Values.backend.persistence $key }}
+            {{- if $p.enabled }}
+            - name: {{ $volume }}
+              mountPath: {{ $p.mountPath }}
+            {{- end }}
+            {{- end }}
+      volumes:
+        {{- range $key, $volume := dict "myDocs" "my-docs" "outputs" "outputs" "logs" "logs" }}
+        {{- $p := index $.Values.backend.persistence $key }}
+        {{- if $p.enabled }}
+        - name: {{ $volume }}
+          persistentVolumeClaim:
+            claimName: {{ include "gpt-researcher.pvcName" (dict "ctx" $ "key" $key "volume" $volume) }}
+        {{- end }}
+        {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

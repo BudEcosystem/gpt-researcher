@@ -1,0 +1,24 @@
+{{- if or (and .Values.backend.enabled (not .Values.fullstack.enabled)) .Values.fullstack.enabled }}
+{{- range $key, $volume := dict "myDocs" "my-docs" "outputs" "outputs" "logs" "logs" }}
+{{- $p := index $.Values.backend.persistence $key }}
+{{- if and $p.enabled (not $p.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gpt-researcher.fullname" $ }}-{{ $volume }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.componentLabels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml $p.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $p.size }}
+  {{- if $p.storageClass }}
+  storageClassName: {{ $p.storageClass | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

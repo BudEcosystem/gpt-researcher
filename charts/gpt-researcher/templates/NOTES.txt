@@ -1,0 +1,44 @@
+{{ .Chart.Name }} {{ .Chart.AppVersion }} has been installed as "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+{{- if .Values.fullstack.enabled }}
+
+Mode: fullstack (single pod runs backend + frontend behind nginx)
+Service: {{ include "gpt-researcher.fullname" . }}-fullstack:{{ .Values.fullstack.service.port }}
+{{- else }}
+
+Mode: split
+{{- if .Values.backend.enabled }}
+Backend  Service: {{ include "gpt-researcher.fullname" . }}-backend:{{ .Values.backend.service.port }}
+{{- end }}
+{{- if .Values.frontend.enabled }}
+Frontend Service: {{ include "gpt-researcher.fullname" . }}-frontend:{{ .Values.frontend.service.port }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Ingress host: {{ .Values.ingress.host }}
+  Browse:  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/
+{{- else }}
+
+Ingress is disabled. To port-forward locally:
+{{- if .Values.fullstack.enabled }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "gpt-researcher.fullname" . }}-fullstack {{ .Values.fullstack.service.port }}
+{{- else }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "gpt-researcher.fullname" . }}-frontend {{ .Values.frontend.service.port }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.secrets.create (not .Values.secrets.existingSecret) (not .Values.secrets.externalSecrets.enabled) }}
+
+WARNING: You are storing API keys in values (secrets.create=true). This is
+suitable for local/dev only. For production, set secrets.existingSecret or
+enable secrets.externalSecrets and use External Secrets Operator.
+{{- end }}
+
+{{- if and .Values.frontend.enabled (not .Values.frontend.env.NEXT_PUBLIC_GPTR_API_URL) (not .Values.ingress.enabled) }}
+
+NOTE: frontend.env.NEXT_PUBLIC_GPTR_API_URL is unset. The browser needs an
+externally reachable URL to call the backend. Either enable ingress.enabled
+or set frontend.env.NEXT_PUBLIC_GPTR_API_URL explicitly.
+{{- end }}

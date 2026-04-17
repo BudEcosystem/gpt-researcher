@@ -1,0 +1,22 @@
+{{- if .Values.fullstack.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gpt-researcher.fullname" . }}-fullstack
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gpt-researcher.componentLabels" (dict "ctx" . "component" "fullstack") | nindent 4 }}
+spec:
+  type: {{ .Values.fullstack.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.fullstack.service.port }}
+      targetPort: http
+      protocol: TCP
+    - name: backend
+      port: {{ .Values.fullstack.service.backendPort }}
+      targetPort: backend
+      protocol: TCP
+  selector:
+    {{- include "gpt-researcher.componentSelectorLabels" (dict "ctx" . "component" "fullstack") | nindent 4 }}
+{{- end }}
