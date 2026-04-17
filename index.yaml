@@ -17,6 +17,46 @@ entries:
         - name: Upstream
           url: https://github.com/assafelovic/gpt-researcher
     apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-04-17T15:52:45.435839654Z"
+    description: GPT Researcher — autonomous research agent with web UI
+    digest: 2cb58f973634a6a99d734515d551ee6df635217c4e492880cc19e978fdcf2f37
+    home: https://gptr.dev
+    icon: https://raw.githubusercontent.com/assafelovic/gpt-researcher/master/frontend/nextjs/public/img/gptr-logo.png
+    keywords:
+    - ai
+    - agent
+    - research
+    - llm
+    - fastapi
+    - nextjs
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: BudEcosystem
+      url: https://github.com/BudEcosystem
+    name: gpt-researcher
+    sources:
+    - https://github.com/BudEcosystem/gpt-researcher
+    type: application
+    urls:
+    - https://github.com/BudEcosystem/gpt-researcher/releases/download/gpt-researcher-0.1.0/gpt-researcher-0.1.0.tgz
+    version: 0.1.0
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/images: |
+        - name: backend
+          image: budstudio/gpt-researcher-backend:0.1.0-full
+        - name: backend-base
+          image: budstudio/gpt-researcher-backend:0.1.0
+        - name: frontend
+          image: budstudio/gpt-researcher-frontend:0.1.0
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Source
+          url: https://github.com/BudEcosystem/gpt-researcher
+        - name: Upstream
+          url: https://github.com/assafelovic/gpt-researcher
+    apiVersion: v2
     appVersion: 0.0.1-rc4
     created: "2026-04-17T13:33:22.138620183Z"
     description: GPT Researcher — autonomous research agent with web UI
@@ -81,4 +121,4 @@ entries:
     urls:
     - https://github.com/BudEcosystem/gpt-researcher/releases/download/gpt-researcher-0.0.1-rc3/gpt-researcher-0.0.1-rc3.tgz
     version: 0.0.1-rc3
-generated: "2026-04-17T13:33:22.138633606Z"
+generated: "2026-04-17T15:52:45.435875341Z"
