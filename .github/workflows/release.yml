@@ -140,6 +140,11 @@ jobs:
         run: |
           helm push ".chart-dist/gpt-researcher-${{ needs.version.outputs.version }}.tgz" oci://${{ env.CHART_OCI }}
 
+      - name: Configure git identity
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Publish to gh-pages (index.yaml)
         uses: helm/chart-releaser-action@v1.6.0
         with:
